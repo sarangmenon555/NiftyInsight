@@ -70,80 +70,9 @@ Benchmarks: Nifty 50 and Nifty 500 price indices and an equal weighted universe 
 
 Error analysis (`src/analysis.py`): precision and lift by sector, year, month, volatility bucket, liquidity bucket and market regime, the worst false positives, and the features that separate false positives from true positives. `reports/analysis_findings.md` summarises them.
 
-## 6. How to run
+## 6. Results and discussion
 
-Python 3.10 or newer.
-
-```
-python -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-```
-
-Check that NSE endpoints respond from your network before the long download:
-
-```
-python -m src.pipeline check-sources
-```
-
-Full workflow with real data (first run takes a while, the download is about 5,500 small files):
-
-```
-python -m src.pipeline all --source download
-```
-
-Individual steps: `download`, `build`, `eda`, `train`, `simulate`, `analyze`, `latest`, `trade`. Add `--fast` to `train` or `all` for a quick run with smaller samples.
-
-Pipeline demo without any network access, on synthetic data in a separate folder:
-
-```
-bash scripts/run_demo.sh
-```
-
-Synthetic data is only a plumbing test. Its performance numbers mean nothing.
-
-Notebooks in `notebooks/` call the same functions: `00_end_to_end`, `01_data_and_eda`, `02_models`, `03_simulation_and_analysis`. They are shipped without outputs. Run them on your real data and commit the executed versions.
-
-### Two regimes
-
-- Download mode (default): `python -m src.pipeline run-daily` downloads missing days, updates the tables incrementally, retrains when models are older than 30 days, and writes the latest signals.
-- File mode: `python -m src.pipeline run-daily --mode file` skips download and feature building and works from an existing `data/processed/features.parquet`. Copy a prebuilt file there to replicate results quickly.
-
-### Automation with cron
-
-`scripts/run_daily.sh` runs the daily job and appends to `logs/run_daily.log`. NSE publishes bhavcopy in the evening, so schedule it after 20:00 India time:
-
-```
-CRON_TZ=Asia/Kolkata
-30 20 * * 1-5 cd /path/to/niftyinsight && bash scripts/run_daily.sh
-```
-
-Raw files, processed tables and models live in `data/` (not intended for git). Output reports live in `reports/`.
-
-### Docker
-
-```
-docker compose build
-docker compose run --rm full-run
-docker compose run --rm pipeline
-docker compose up dashboard
-```
-
-### Dashboard
-
-`streamlit run dashboard/app.py` shows data freshness, latest signals, equity curves against benchmarks, model metrics, feature importance, error analysis and the orders log. To make it live, run it with Docker on a server and put authentication in front of it (see `docs/DEPLOYMENT.md`).
-
-### Broker module
-
-`python -m src.pipeline trade` prints and logs the orders it would place (dry run). Live orders need `pip install -r requirements-broker.txt`, the `--live` flag, `ENABLE_LIVE_TRADING=1`, `KITE_API_KEY` and `KITE_ACCESS_TOKEN`. The live path is untested against a real account.
-
-### Tests
-
-`pip install -r requirements-dev.txt` and `python -m pytest -q`. The tests cover split adjustment, target construction, absence of look ahead in features, incremental versus full rebuild, hand computed simulator cases (costs, stop loss, gap stop, reinvestment), metrics, the order builder and an end to end synthetic run.
-
-## 7. Results and discussion
-
-### 7.1 Setup
+### 6.1 Setup
 
 - Data: 1,236,778 daily rows for the 700 most liquid NSE stocks on each date. The bhavcopy delivery file was available for about 1,850 trading days (the endpoint returns nothing for earlier dates), so the history is shorter than the 2015 start date in the configuration.
 - Split in time: train up to 2022-12-31, validation 2023, test from 2024-01-01 to November 2026 (471,437 labelled test rows). The last 5 days have no label yet.
@@ -151,7 +80,7 @@ docker compose up dashboard
 - Trading rules: entry at the next open, 5 day hold, 0.15 percent cost per side, strategies as in section 5. Benchmarks are price indices without dividends.
 - Important: all tables below come from fast mode runs (3 tuning iterations per model, small training samples). They are a working baseline, not the final tuned numbers.
 
-### 7.2 Model quality on the test period
+### 6.2 Model quality on the test period
 
 | Target | Model | AUC | Precision in top 1 percent | Base rate |
 |---|---|---|---|---|
@@ -166,7 +95,7 @@ docker compose up dashboard
 
 Validation and test AUC are close (for example random forest, absolute: 0.580 and 0.603), so the models are not simply overfitted to the validation period.
 
-### 7.3 Trading results on the test period (exact simulation, CAGR and maximum drawdown)
+### 6.3 Trading results on the test period (exact simulation, CAGR and maximum drawdown)
 
 | Strategy | Absolute CAGR | Absolute max DD | Excess CAGR | Excess max DD |
 |---|---|---|---|---|
@@ -186,7 +115,7 @@ Validation and test AUC are close (for example random forest, absolute: 0.580 an
 | Nifty 500 | +7.7% | -18.8% | +7.7% | -18.8% |
 | Equal weight universe | +9.8% | -24.3% | +9.8% | -24.3% |
 
-### 7.4 Discussion
+### 6.4 Discussion
 
 1. **The models have a small but real ability to rank stocks.** Random forest and XGBoost beat the base rate in the top 1 percent of predictions (47 percent against 24 percent for the absolute target). The decision tree is no better than chance and is unstable, so it is shown only as the lecture baseline.
 2. **Most of the absolute target edge was market timing, not stock picking.** In the error analysis the features that separate false positives from true positives are market level: 21 day market volatility (standardized gap 0.35), India VIX, market breadth and the market trend. A fixed +3 percent target is easier to reach when the whole market is volatile, so the model learns when the market is likely to bounce. When the target is changed to the return relative to the universe, those gaps fall below 0.1 and test AUC drops from about 0.59 to 0.55. What is left is a weak stock selection signal.
@@ -199,11 +128,11 @@ Validation and test AUC are close (for example random forest, absolute: 0.580 an
 9. **Where predictions work best.** Lift over the base rate was highest in 2025 and for low volatility stocks (lift 1.66 in the lowest volatility quartile for the absolute target), and weakest for the Diversified sector (1.06, and 0.76 for the excess target). Sector information is missing for many stocks because the sector list covers only current Nifty 500 members.
 10. **Data quality issue found.** The liquidity universe includes a few ETFs (for example silver ETFs) and thinly traded small caps. They behave differently from ordinary stocks and should be excluded in a next version.
 
-### 7.5 Conclusion
+### 6.5 Conclusion
 
 On NSE daily data the pipeline reproduces a realistic outcome: a modest predictive signal, much of which comes from market conditions, that does not survive transaction costs as a trading strategy. The project's value is in the full workflow and in the diagnostics that explain why. It does not claim a profitable strategy.
 
-### 7.6 Next experiments
+### 6.6 Next experiments
 
 - Average return by predicted probability decile, to test whether higher confidence picks are really better.
 - Exclude ETFs and the least liquid names, and trade the top few stocks per day by rank instead of using a fixed threshold.
@@ -211,7 +140,7 @@ On NSE daily data the pipeline reproduces a realistic outcome: a modest predicti
 - Walk forward retraining with repeated runs and different seeds, reporting the spread of results instead of the best one.
 - Longer history through the older price only bhavcopy format, which has no delivery data.
 
-## 8. Limitations and known difficulties
+## 7. Limitations and known difficulties
 
 - Results are unstable between runs in fast mode. Report ranges, not the best strategy.
 - ETFs and very thin small caps enter the liquidity universe and should be filtered.
@@ -222,57 +151,3 @@ On NSE daily data the pipeline reproduces a realistic outcome: a modest predicti
 - Simulations assume fills at the open and at the stop price. Circuit limits, partial fills and market impact are not modelled.
 - Long only delivery trading. Shorting would need futures and different costs.
 - Taxes (short term capital gains) are not included beyond the flat cost assumption.
-
-## 9. Ideas for improvement
-
-- Walk forward retraining instead of one fixed train, validation, test split.
-- Add FII and DII flow data, corporate action calendars, earnings dates and news sentiment.
-- Predict excess return over the market so signals do not just follow the market regime.
-- Add LSTM or temporal convolution models and compare with the trees.
-- Meta labelling: a second model that decides whether to act on each signal.
-- Portfolio construction by volatility targeting or risk parity instead of equal slots.
-- Use the error analysis tables to drop sectors or liquidity buckets where precision is below the base rate.
-
-## 10. Project layout
-
-```
-src/            data loaders, features, models, simulation, analysis, broker, CLI
-dashboard/      Streamlit monitor
-notebooks/      research notebooks calling src
-scripts/        cron entry point and synthetic demo
-tests/          unit and end to end tests
-docs/           feature dictionary and deployment guide
-Dockerfile, docker-compose.yml, requirements*.txt, Makefile
-```
-
-## 11. Course rubric checklist
-
-| Area | Item | Where |
-|---|---|---|
-| Problem | README, context, end goal | Sections 1 and 5 |
-| Problem | New problem definition | Indian equities, daily, one week horizon |
-| Problem | Clear step description and findings | Sections 3, 6, 8 |
-| Data | Lecture style sources and features | Price, volume, technical features |
-| Data | 20+ new features documented | docs/FEATURES.md |
-| Data | New data source | NSE bhavcopy, index files |
-| Data | More than one million rows | 1,236,778 rows |
-| Transformations | One data frame, feature sets | `features.py` |
-| Transformations | 5+ new features, dummies, bins | `add_derived` |
-| Transformations | EDA | `eda.py`, notebook 01 |
-| Modeling | Tree models, more than one | `models.py` |
-| Modeling | Custom decision rules | `choose_thresholds`, top k and regime rules |
-| Modeling | Hyperparameter tuning | `tune_model` |
-| Modeling | New model | XGBoost |
-| Simulation | Vector, multiple strategies | `add_vector_simulations` |
-| Simulation | Exact simulation with reinvestment | `run_exact` |
-| Simulation | Metrics against benchmark | `metrics.py`, `simulation_summary.csv` |
-| Simulation | Stop loss, sizing by probability, regime filter | `sim2_`, `sim3_` |
-| Simulation | Better than benchmark | Not achieved reliably, see section 7 |
-| Simulation | Deep analysis by sector, year and more | `analysis.py` |
-| Automation | Scripts plus end to end notebook | `src/`, `notebooks/00_end_to_end.ipynb` |
-| Automation | Dependencies | `requirements*.txt` |
-| Automation | Cron | `scripts/run_daily.sh` |
-| Automation | Two regimes | `run-daily --mode` |
-| Automation | Incremental loading, storage outside git | `data/` parquet |
-| Bonus | Modules, broker code, dashboard, Docker | `src/`, `broker.py`, `dashboard/`, `Dockerfile` |
-| Bonus | Cloud deployment | Free dashboard hosting guide in docs/DEPLOYMENT.md, deploy it yourself |
