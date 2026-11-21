@@ -1,4 +1,4 @@
-# NiftyInsight: NSE daily swing trading with machine learning
+# NiftyInsight: NSE daily swing trading with machine learning`n`nLive dashboard: https://niftyinsight.streamlit.app
 
 An end to end algorithmic trading system for Indian equities. It downloads daily NSE data, builds one combined feature table for the 700 most liquid stocks, trains tree based models to find stocks likely to rise at least 3 percent over the next 5 trading days, simulates trading rules on those predictions, and publishes a fresh list of candidate trades every evening.
 
