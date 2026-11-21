@@ -1,0 +1,8 @@
+{
+  "key": "pred_xgb__sim1_equal_weight",
+  "cagr": 0.07998033628143819,
+  "sharpe": 0.15973627421437467,
+  "max_drawdown": -0.27337401136989736,
+  "trades": 856.0,
+  "total_return": 0.24861324322438416
+}

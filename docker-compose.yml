@@ -1,0 +1,27 @@
+services:
+  pipeline:
+    build: .
+    image: niftyinsight
+    command: ["run-daily"]
+    volumes:
+      - ./data:/data
+      - ./reports:/reports
+
+  full-run:
+    build: .
+    image: niftyinsight
+    command: ["all", "--source", "download"]
+    profiles: ["manual"]
+    volumes:
+      - ./data:/data
+      - ./reports:/reports
+
+  dashboard:
+    build: .
+    image: niftyinsight
+    entrypoint: ["streamlit", "run", "dashboard/app.py", "--server.port=8501", "--server.address=0.0.0.0"]
+    ports:
+      - "8501:8501"
+    volumes:
+      - ./data:/data
+      - ./reports:/reports

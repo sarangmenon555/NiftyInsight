@@ -1,0 +1,12 @@
+data
+data_synthetic
+reports
+reports_synthetic
+logs
+.venv
+.git
+__pycache__
+*.pyc
+.pytest_cache
+notebooks
+tests

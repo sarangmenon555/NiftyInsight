@@ -1,0 +1,10 @@
+data/
+data_synthetic/
+reports_synthetic/
+logs/
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ipynb_checkpoints/
+*.joblib

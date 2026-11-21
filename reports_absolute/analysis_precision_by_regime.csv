@@ -1,0 +1,3 @@
+regime,observations,base_rate,signals,precision,avg_forward_return,lift,avg_net_return
+healthy,361201,0.21815,54788,0.28130248,0.0030917223,1.289491,9.1722235e-05
+weak,110236,0.29980224,58700,0.35059625,0.009015978,1.169425,0.0060159783
